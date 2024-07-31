@@ -99,13 +99,13 @@ class SettingsViewController: UIViewController {
     
     @objc private func themeChanged() {
         // Handle theme change
-        let selectedTheme = themeSegmentedControl.selectedSegmentIndex
+        _ = themeSegmentedControl.selectedSegmentIndex
         // Add code to change theme based on selectedTheme
     }
     
     @objc private func languageChanged() {
         // Handle language change
-        let selectedLanguage = languageSegmentedControl.selectedSegmentIndex
+        _ = languageSegmentedControl.selectedSegmentIndex
         // Add code to change language based on selectedLanguage
     }
     
