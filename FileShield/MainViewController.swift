@@ -21,14 +21,6 @@ class MainViewController: UIViewController, UIDocumentPickerDelegate {
     }
     
     func setupUI() {
-        // Close Button (Top-Left Corner)
-        let closeButton = UIButton(type: .system)
-        closeButton.setTitle("X", for: .normal)
-        closeButton.setTitleColor(.white, for: .normal)
-        closeButton.titleLabel?.font = UIFont.systemFont(ofSize: 24)
-        closeButton.addTarget(self, action: #selector(closeApp), for: .touchUpInside)
-        closeButton.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(closeButton)
         
         // Big Encrypt Icon Button
         let bigEncryptButton = UIButton(type: .system)
@@ -42,11 +34,12 @@ class MainViewController: UIViewController, UIDocumentPickerDelegate {
         // Title Label
         let titleLabel = UILabel()
         titleLabel.text = "FileShield"
-        titleLabel.font = UIFont(name: "AvenirNext-Bold", size: 38)
+        titleLabel.font = UIFont(name: "HelveticaNeue-Light", size: 48)
         titleLabel.textColor = .white
         titleLabel.textAlignment = .center
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(titleLabel)
+
         
         // File Path TextField
         filePathTextField = UITextField()
@@ -105,10 +98,18 @@ class MainViewController: UIViewController, UIDocumentPickerDelegate {
         algorithmSegmentedControl = UISegmentedControl(items: ["AES", "DES", "Blowfish"])
         algorithmSegmentedControl.selectedSegmentIndex = 0
         algorithmSegmentedControl.backgroundColor = UIColor(red: 44/255, green: 44/255, blue: 46/255, alpha: 1)
-        algorithmSegmentedControl.setTitleTextAttributes([NSAttributedString.Key.foregroundColor: UIColor.white], for: .normal)
-        algorithmSegmentedControl.setTitleTextAttributes([NSAttributedString.Key.foregroundColor: UIColor.black], for: .selected)
+
+        // Normal durum için font ayarı
+        let normalFont = UIFont(name: "HelveticaNeue-Light", size: 16) ?? UIFont.systemFont(ofSize: 18)
+        algorithmSegmentedControl.setTitleTextAttributes([NSAttributedString.Key.foregroundColor: UIColor.white, NSAttributedString.Key.font: normalFont], for: .normal)
+
+        // Seçili durum için font ayarı
+        let selectedFont = UIFont(name: "AvenirNext-Bold", size: 16) ?? UIFont.boldSystemFont(ofSize: 18)
+        algorithmSegmentedControl.setTitleTextAttributes([NSAttributedString.Key.foregroundColor: UIColor.black, NSAttributedString.Key.font: selectedFont], for: .selected)
+
         algorithmSegmentedControl.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(algorithmSegmentedControl)
+
         
         // Encrypt Button with Icon
         let encryptButton = UIButton(type: .system)
@@ -127,7 +128,7 @@ class MainViewController: UIViewController, UIDocumentPickerDelegate {
         decryptButton.setTitle(" Decrypt", for: .normal)
         decryptButton.setTitleColor(.white, for: .normal)
         decryptButton.titleLabel?.font = UIFont(name: "AvenirNext-Regular", size: 18)
-        decryptButton.setImage(UIImage(systemName: "lock.open"), for: .normal)
+        decryptButton.setImage(UIImage(systemName: "key"), for: .normal) // Changed icon to "key"
         decryptButton.tintColor = .white
         decryptButton.semanticContentAttribute = .forceRightToLeft
         decryptButton.addTarget(self, action: #selector(decryptFile), for: .touchUpInside)
@@ -136,15 +137,15 @@ class MainViewController: UIViewController, UIDocumentPickerDelegate {
         
         // Layout Constraints
         NSLayoutConstraint.activate([
-            closeButton.topAnchor.constraint(equalTo: view.topAnchor, constant: 10),
-            closeButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 10),
+           
             
-            bigEncryptButton.topAnchor.constraint(equalTo: closeButton.bottomAnchor, constant: 0),
+            bigEncryptButton.topAnchor.constraint(equalTo: view.topAnchor, constant: 48),
             bigEncryptButton.bottomAnchor.constraint(equalTo: titleLabel.topAnchor, constant: -40),
             bigEncryptButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             
             titleLabel.topAnchor.constraint(equalTo: bigEncryptButton.bottomAnchor, constant: 20),
             titleLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            
             
             filePathTextField.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 20),
             filePathTextField.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 30),
@@ -167,15 +168,17 @@ class MainViewController: UIViewController, UIDocumentPickerDelegate {
             algorithmSegmentedControl.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -30),
             
             encryptButton.topAnchor.constraint(equalTo: algorithmSegmentedControl.bottomAnchor, constant: 20),
-            encryptButton.trailingAnchor.constraint(equalTo: view.centerXAnchor, constant: -10),
+            encryptButton.trailingAnchor.constraint(equalTo: view.centerXAnchor, constant: -12),
             
             decryptButton.topAnchor.constraint(equalTo: algorithmSegmentedControl.bottomAnchor, constant: 20),
-            decryptButton.leadingAnchor.constraint(equalTo: view.centerXAnchor, constant: 10),
+            decryptButton.leadingAnchor.constraint(equalTo: view.centerXAnchor, constant: 12),
+            
         ])
         
         // Adjust the window size and disable resizing
         view.frame = CGRect(x: 0, y: 0, width: 320, height: 480)
         view.autoresizingMask = []
+
     }
     
     @objc func selectFile() {
@@ -220,9 +223,9 @@ class MainViewController: UIViewController, UIDocumentPickerDelegate {
             }
             
             if let encryptedData = encryptedData {
-                let encryptedFilePath = filePath + ".enc"
-                try encryptedData.write(to: URL(fileURLWithPath: encryptedFilePath))
-                showAlert(message: "File encrypted successfully using \(algorithm). Saved to \(encryptedFilePath).")
+                let encryptedFilePath = URL(fileURLWithPath: filePath).deletingPathExtension().appendingPathExtension("enc")
+                try encryptedData.write(to: encryptedFilePath)
+                showAlert(message: "File encrypted successfully using \(algorithm). Saved to \(encryptedFilePath.path).")
             } else {
                 showAlert(message: "Encryption failed.")
             }
@@ -259,9 +262,9 @@ class MainViewController: UIViewController, UIDocumentPickerDelegate {
             }
             
             if let decryptedData = decryptedData {
-                let decryptedFilePath = filePath.replacingOccurrences(of: ".enc", with: "")
-                try decryptedData.write(to: URL(fileURLWithPath: decryptedFilePath))
-                showAlert(message: "File decrypted successfully using \(algorithm). Saved to \(decryptedFilePath).")
+                let decryptedFilePath = URL(fileURLWithPath: filePath).deletingPathExtension().appendingPathExtension("dec")
+                try decryptedData.write(to: decryptedFilePath)
+                showAlert(message: "File decrypted successfully using \(algorithm). Saved to \(decryptedFilePath.path).")
             } else {
                 showAlert(message: "Decryption failed.")
             }
