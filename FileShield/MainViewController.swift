@@ -1,213 +1,359 @@
 import UIKit
+import CommonCrypto
 
-class MainViewController: UIViewController {
-
-    // UI Elements
-    private let filePathView = UIView()
-    private let filePathLabel = UILabel() // Label to display the file path
-    private let clearButton = UIButton(type: .system) // Button to clear the file path label
-    private let selectFileButton = UIButton(type: .system) // Button to select a file manually
-    private let encryptButton = UIButton(type: .system)
-    private let decryptButton = UIButton(type: .system)
-    private let settingsButton = UIButton(type: .system) // Settings button
+class MainViewController: UIViewController, UIDocumentPickerDelegate {
     
-    private let passwordTextField = UITextField() // Password text field
-    private let confirmPasswordTextField = UITextField() // Confirm password text field
+    // UI Elements
+    var filePathTextField: UITextField!
+    var passwordTextField: UITextField!
+    var confirmPasswordTextField: UITextField!
+    var algorithmSegmentedControl: UISegmentedControl!
     
     override func viewDidLoad() {
         super.viewDidLoad()
         
+        view.backgroundColor = UIColor(red: 28/255, green: 28/255, blue: 30/255, alpha: 1)
         setupUI()
-        setupConstraints()
-        customizeNavigationBar()
-
     }
     
-    private func customizeNavigationBar() {
-        // Set the title with a custom font and size
+    override var prefersStatusBarHidden: Bool {
+        return true
+    }
+    
+    func setupUI() {
+        // Close Button (Top-Left Corner)
+        let closeButton = UIButton(type: .system)
+        closeButton.setTitle("X", for: .normal)
+        closeButton.setTitleColor(.white, for: .normal)
+        closeButton.titleLabel?.font = UIFont.systemFont(ofSize: 24)
+        closeButton.addTarget(self, action: #selector(closeApp), for: .touchUpInside)
+        closeButton.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(closeButton)
+        
+        // Big Encrypt Icon Button
+        let bigEncryptButton = UIButton(type: .system)
+        bigEncryptButton.setImage(UIImage(systemName: "lock.shield.fill"), for: .normal)
+        bigEncryptButton.tintColor = .white
+        bigEncryptButton.transform = CGAffineTransform(scaleX: 3, y: 3) // Scale up the icon size
+        bigEncryptButton.isUserInteractionEnabled = false // Disable interaction
+        bigEncryptButton.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(bigEncryptButton)
+        
+        // Title Label
         let titleLabel = UILabel()
         titleLabel.text = "FileShield"
-        titleLabel.font = UIFont.systemFont(ofSize: 40, weight: .semibold) // Modern font and weight
-        titleLabel.textColor = UIColor.systemYellow // Customize the color to fit the modern theme
+        titleLabel.font = UIFont(name: "AvenirNext-Bold", size: 38)
+        titleLabel.textColor = .white
         titleLabel.textAlignment = .center
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(titleLabel)
         
-        // Use the titleLabel as the title view of the navigation item
-        navigationItem.titleView = titleLabel
+        // File Path TextField
+        filePathTextField = UITextField()
+        filePathTextField.placeholder = "Select File"
+        filePathTextField.font = UIFont(name: "AvenirNext-Regular", size: 16)
+        filePathTextField.textColor = .white
+        filePathTextField.backgroundColor = UIColor(red: 44/255, green: 44/255, blue: 46/255, alpha: 1)
+        filePathTextField.borderStyle = .roundedRect
+        filePathTextField.attributedPlaceholder = NSAttributedString(string: "Select File", attributes: [NSAttributedString.Key.foregroundColor: UIColor.lightGray])
+        filePathTextField.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(filePathTextField)
         
-        // Optional: Customize the navigation bar's background color
-        navigationController?.navigationBar.barTintColor = UIColor.white
-        navigationController?.navigationBar.isTranslucent = false
-    }
-    
-    private func setupUI() {
-        // Set the main view's background color
-        view.backgroundColor = .white
-        // title = "FileShield" // Set the title for the navigation bar
+        // Setting a fixed width for the filePathTextField
+        let fixedWidth: CGFloat = 200 // Set the desired width here
+        NSLayoutConstraint.activate([
+            filePathTextField.widthAnchor.constraint(equalToConstant: fixedWidth)
+        ])
         
-        // File Path View
-        filePathView.backgroundColor = UIColor.systemGray5
-        filePathView.layer.cornerRadius = 10
-        filePathView.layer.borderWidth = 0
-        filePathView.layer.cornerRadius = 0
-
-        filePathView.layer.borderColor = UIColor.systemGray.cgColor
-        view.addSubview(filePathView)
-        
-        // File Path Label
-        filePathLabel.text = "Select a file"
-        filePathLabel.font = UIFont.systemFont(ofSize: 14)
-        filePathLabel.textAlignment = .center
-        filePathLabel.textColor = .darkGray
-        filePathView.addSubview(filePathLabel)
-        
-        // Clear Button
-        clearButton.setImage(UIImage(named: "clearIcon")?.withRenderingMode(.alwaysOriginal), for: .normal) // Set image for clear button
-        clearButton.imageView?.contentMode = .scaleAspectFit
-        clearButton.addTarget(self, action: #selector(clearFilePath), for: .touchUpInside)
-        view.addSubview(clearButton)
-        
-        // Select File Button
-        selectFileButton.setImage(UIImage(named: "selectFileIcon")?.withRenderingMode(.alwaysOriginal), for: .normal) // Set image for select file button
-        selectFileButton.imageView?.contentMode = .scaleAspectFit
-        selectFileButton.addTarget(self, action: #selector(selectFile), for: .touchUpInside)
-        view.addSubview(selectFileButton)
+        // Browse Button with Icon
+        let browseButton = UIButton(type: .system)
+        browseButton.setTitle(" Browse", for: .normal)
+        browseButton.setTitleColor(.white, for: .normal)
+        browseButton.titleLabel?.font = UIFont(name: "AvenirNext-Regular", size: 18)
+        browseButton.setImage(UIImage(systemName: "folder"), for: .normal)
+        browseButton.tintColor = .white
+        browseButton.semanticContentAttribute = .forceRightToLeft
+        browseButton.addTarget(self, action: #selector(selectFile), for: .touchUpInside)
+        browseButton.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(browseButton)
         
         // Password TextField
-        passwordTextField.placeholder = "Enter password"
-        passwordTextField.isSecureTextEntry = true // Hide input with dots
+        passwordTextField = UITextField()
+        passwordTextField.placeholder = "Password"
+        passwordTextField.font = UIFont(name: "AvenirNext-Regular", size: 16)
+        passwordTextField.textColor = .white
+        passwordTextField.backgroundColor = UIColor(red: 44/255, green: 44/255, blue: 46/255, alpha: 1)
+        passwordTextField.isSecureTextEntry = true
         passwordTextField.borderStyle = .roundedRect
+        passwordTextField.attributedPlaceholder = NSAttributedString(string: "Password", attributes: [NSAttributedString.Key.foregroundColor: UIColor.lightGray])
+        passwordTextField.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(passwordTextField)
         
         // Confirm Password TextField
-        confirmPasswordTextField.placeholder = "Confirm password"
-        confirmPasswordTextField.isSecureTextEntry = true // Hide input with dots
+        confirmPasswordTextField = UITextField()
+        confirmPasswordTextField.placeholder = "Confirm Password"
+        confirmPasswordTextField.font = UIFont(name: "AvenirNext-Regular", size: 16)
+        confirmPasswordTextField.textColor = .white
+        confirmPasswordTextField.backgroundColor = UIColor(red: 44/255, green: 44/255, blue: 46/255, alpha: 1)
+        confirmPasswordTextField.isSecureTextEntry = true
         confirmPasswordTextField.borderStyle = .roundedRect
+        confirmPasswordTextField.attributedPlaceholder = NSAttributedString(string: "Confirm Password", attributes: [NSAttributedString.Key.foregroundColor: UIColor.lightGray])
+        confirmPasswordTextField.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(confirmPasswordTextField)
         
-        // Encrypt Button
-        encryptButton.setImage(UIImage(named: "encryptIcon")?.withRenderingMode(.alwaysOriginal), for: .normal) // Set image for encrypt button
-        encryptButton.imageView?.contentMode = .scaleAspectFit
-        encryptButton.backgroundColor = .systemBackground
-        encryptButton.layer.cornerRadius = 8
+        // Algorithm Segmented Control
+        algorithmSegmentedControl = UISegmentedControl(items: ["AES", "DES", "Blowfish"])
+        algorithmSegmentedControl.selectedSegmentIndex = 0
+        algorithmSegmentedControl.backgroundColor = UIColor(red: 44/255, green: 44/255, blue: 46/255, alpha: 1)
+        algorithmSegmentedControl.setTitleTextAttributes([NSAttributedString.Key.foregroundColor: UIColor.white], for: .normal)
+        algorithmSegmentedControl.setTitleTextAttributes([NSAttributedString.Key.foregroundColor: UIColor.black], for: .selected)
+        algorithmSegmentedControl.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(algorithmSegmentedControl)
+        
+        // Encrypt Button with Icon
+        let encryptButton = UIButton(type: .system)
+        encryptButton.setTitle(" Encrypt", for: .normal)
+        encryptButton.setTitleColor(.white, for: .normal)
+        encryptButton.titleLabel?.font = UIFont(name: "AvenirNext-Regular", size: 18)
+        encryptButton.setImage(UIImage(systemName: "lock.shield"), for: .normal)
+        encryptButton.tintColor = .white
+        encryptButton.semanticContentAttribute = .forceRightToLeft
+        encryptButton.addTarget(self, action: #selector(encryptFile), for: .touchUpInside)
+        encryptButton.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(encryptButton)
         
-        // Decrypt Button
-        decryptButton.setImage(UIImage(named: "decryptIcon")?.withRenderingMode(.alwaysOriginal), for: .normal) // Set image for decrypt button
-        decryptButton.imageView?.contentMode = .scaleAspectFit
-        decryptButton.backgroundColor = .systemBackground
-        decryptButton.layer.cornerRadius = 8
+        // Decrypt Button with Icon
+        let decryptButton = UIButton(type: .system)
+        decryptButton.setTitle(" Decrypt", for: .normal)
+        decryptButton.setTitleColor(.white, for: .normal)
+        decryptButton.titleLabel?.font = UIFont(name: "AvenirNext-Regular", size: 18)
+        decryptButton.setImage(UIImage(systemName: "lock.open"), for: .normal)
+        decryptButton.tintColor = .white
+        decryptButton.semanticContentAttribute = .forceRightToLeft
+        decryptButton.addTarget(self, action: #selector(decryptFile), for: .touchUpInside)
+        decryptButton.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(decryptButton)
         
-        // Settings Button
-        settingsButton.setImage(UIImage(named: "settingsIcon")?.withRenderingMode(.alwaysOriginal), for: .normal) // Set image for settings button
-        settingsButton.imageView?.contentMode = .scaleAspectFit
-        settingsButton.addTarget(self, action: #selector(openSettings), for: .touchUpInside)
-        view.addSubview(settingsButton)
+        // Layout Constraints
+        NSLayoutConstraint.activate([
+            closeButton.topAnchor.constraint(equalTo: view.topAnchor, constant: 10),
+            closeButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 10),
+            
+            bigEncryptButton.topAnchor.constraint(equalTo: closeButton.bottomAnchor, constant: 0),
+            bigEncryptButton.bottomAnchor.constraint(equalTo: titleLabel.topAnchor, constant: -40),
+            bigEncryptButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            
+            titleLabel.topAnchor.constraint(equalTo: bigEncryptButton.bottomAnchor, constant: 20),
+            titleLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            
+            filePathTextField.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 20),
+            filePathTextField.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 30),
+            filePathTextField.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -140),
+            
+            browseButton.centerYAnchor.constraint(equalTo: filePathTextField.centerYAnchor),
+            browseButton.leadingAnchor.constraint(equalTo: filePathTextField.trailingAnchor, constant: 10),
+            browseButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -30),
+            
+            passwordTextField.topAnchor.constraint(equalTo: filePathTextField.bottomAnchor, constant: 20),
+            passwordTextField.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 30),
+            passwordTextField.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -30),
+            
+            confirmPasswordTextField.topAnchor.constraint(equalTo: passwordTextField.bottomAnchor, constant: 20),
+            confirmPasswordTextField.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 30),
+            confirmPasswordTextField.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -30),
+            
+            algorithmSegmentedControl.topAnchor.constraint(equalTo: confirmPasswordTextField.bottomAnchor, constant: 20),
+            algorithmSegmentedControl.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 30),
+            algorithmSegmentedControl.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -30),
+            
+            encryptButton.topAnchor.constraint(equalTo: algorithmSegmentedControl.bottomAnchor, constant: 20),
+            encryptButton.trailingAnchor.constraint(equalTo: view.centerXAnchor, constant: -10),
+            
+            decryptButton.topAnchor.constraint(equalTo: algorithmSegmentedControl.bottomAnchor, constant: 20),
+            decryptButton.leadingAnchor.constraint(equalTo: view.centerXAnchor, constant: 10),
+        ])
+        
+        // Adjust the window size and disable resizing
+        view.frame = CGRect(x: 0, y: 0, width: 320, height: 480)
+        view.autoresizingMask = []
     }
     
-    private func setupConstraints() {
-        filePathView.translatesAutoresizingMaskIntoConstraints = false
-        filePathLabel.translatesAutoresizingMaskIntoConstraints = false
-        clearButton.translatesAutoresizingMaskIntoConstraints = false
-        selectFileButton.translatesAutoresizingMaskIntoConstraints = false
-        encryptButton.translatesAutoresizingMaskIntoConstraints = false
-        decryptButton.translatesAutoresizingMaskIntoConstraints = false
-        settingsButton.translatesAutoresizingMaskIntoConstraints = false
-        passwordTextField.translatesAutoresizingMaskIntoConstraints = false
-        confirmPasswordTextField.translatesAutoresizingMaskIntoConstraints = false
-        
-        // Set constraints for filePathView
-        NSLayoutConstraint.activate([
-            filePathView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            filePathView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 80),
-            filePathView.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.8),
-            filePathView.heightAnchor.constraint(equalToConstant: 40) // Single line height
-        ])
-        
-        // Set constraints for filePathLabel
-        NSLayoutConstraint.activate([
-            filePathLabel.centerXAnchor.constraint(equalTo: filePathView.centerXAnchor),
-            filePathLabel.centerYAnchor.constraint(equalTo: filePathView.centerYAnchor),
-            filePathLabel.widthAnchor.constraint(equalTo: filePathView.widthAnchor, multiplier: 0.9),
-            filePathLabel.heightAnchor.constraint(equalToConstant: 20)
-        ])
-        
-        // Set constraints for passwordTextField
-        NSLayoutConstraint.activate([
-            passwordTextField.topAnchor.constraint(equalTo: filePathView.bottomAnchor, constant: 20),
-            passwordTextField.leadingAnchor.constraint(equalTo: filePathView.leadingAnchor),
-            passwordTextField.trailingAnchor.constraint(equalTo: filePathView.trailingAnchor),
-            passwordTextField.heightAnchor.constraint(equalToConstant: 40)
-        ])
-        
-        // Set constraints for confirmPasswordTextField
-        NSLayoutConstraint.activate([
-            confirmPasswordTextField.topAnchor.constraint(equalTo: passwordTextField.bottomAnchor, constant: 10),
-            confirmPasswordTextField.leadingAnchor.constraint(equalTo: filePathView.leadingAnchor),
-            confirmPasswordTextField.trailingAnchor.constraint(equalTo: filePathView.trailingAnchor),
-            confirmPasswordTextField.heightAnchor.constraint(equalToConstant: 40)
-        ])
-        
-        // Set constraints for encryptButton
-        NSLayoutConstraint.activate([
-            encryptButton.topAnchor.constraint(equalTo: confirmPasswordTextField.bottomAnchor, constant: 10),
-            encryptButton.leadingAnchor.constraint(equalTo: filePathView.leadingAnchor),
-            encryptButton.widthAnchor.constraint(equalTo: filePathView.widthAnchor, multiplier: 0.45),
-            encryptButton.heightAnchor.constraint(equalToConstant: 50)
-        ])
-        
-        // Set constraints for decryptButton
-        NSLayoutConstraint.activate([
-            decryptButton.topAnchor.constraint(equalTo: confirmPasswordTextField.bottomAnchor, constant: 10),
-            decryptButton.trailingAnchor.constraint(equalTo: filePathView.trailingAnchor),
-            decryptButton.widthAnchor.constraint(equalTo: filePathView.widthAnchor, multiplier: 0.45),
-            decryptButton.heightAnchor.constraint(equalToConstant: 50)
-        ])
-        
-        // Set constraints for clearButton
-        NSLayoutConstraint.activate([
-            clearButton.centerYAnchor.constraint(equalTo: filePathView.centerYAnchor),
-            clearButton.leadingAnchor.constraint(equalTo: filePathView.trailingAnchor, constant: 10),
-            clearButton.widthAnchor.constraint(equalToConstant: 50),
-            clearButton.heightAnchor.constraint(equalToConstant: 40)
-        ])
-        
-        // Set constraints for selectFileButton
-        NSLayoutConstraint.activate([
-            selectFileButton.centerYAnchor.constraint(equalTo: filePathView.centerYAnchor),
-            selectFileButton.trailingAnchor.constraint(equalTo: filePathView.leadingAnchor, constant: -10),
-            selectFileButton.widthAnchor.constraint(equalToConstant: 50),
-            selectFileButton.heightAnchor.constraint(equalToConstant: 40)
-        ])
-        
-        // Set constraints for settingsButton
-        NSLayoutConstraint.activate([
-            settingsButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 15),
-            settingsButton.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: 225),
-            settingsButton.heightAnchor.constraint(equalToConstant: 50)
-        ])
-    }
-    
-    @objc private func clearFilePath() {
-        filePathLabel.text = "Select a file"
-    }
-    
-    @objc private func selectFile() {
-        let documentPicker = UIDocumentPickerViewController(forOpeningContentTypes: [.item], asCopy: true)
+    @objc func selectFile() {
+        let documentPicker = UIDocumentPickerViewController(forOpeningContentTypes: [.data], asCopy: true)
         documentPicker.delegate = self
+        documentPicker.allowsMultipleSelection = false
         present(documentPicker, animated: true, completion: nil)
     }
     
-    @objc private func openSettings() {
-        let settingsViewController = SettingsViewController()
-        navigationController?.pushViewController(settingsViewController, animated: true)
+    func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
+        if let selectedFileURL = urls.first {
+            filePathTextField.text = selectedFileURL.path
+        }
+    }
+    
+    @objc func encryptFile() {
+        guard let filePath = filePathTextField.text, !filePath.isEmpty,
+              let password = passwordTextField.text, !password.isEmpty,
+              let confirmPassword = confirmPasswordTextField.text, confirmPassword == password else {
+            showAlert(message: "Please ensure all fields are filled correctly.")
+            return
+        }
+        
+        let algorithm = algorithmSegmentedControl.titleForSegment(at: algorithmSegmentedControl.selectedSegmentIndex) ?? "AES"
+        
+        do {
+            let fileData = try Data(contentsOf: URL(fileURLWithPath: filePath))
+            let key = Data(password.utf8).sha256()
+            
+            var encryptedData: Data?
+            
+            switch algorithm {
+            case "AES":
+                encryptedData = aesEncrypt(data: fileData, key: key)
+            case "DES":
+                encryptedData = desEncrypt(data: fileData, key: key)
+            case "Blowfish":
+                encryptedData = blowfishEncrypt(data: fileData, key: key)
+            default:
+                showAlert(message: "Unsupported algorithm selected.")
+                return
+            }
+            
+            if let encryptedData = encryptedData {
+                let encryptedFilePath = filePath + ".enc"
+                try encryptedData.write(to: URL(fileURLWithPath: encryptedFilePath))
+                showAlert(message: "File encrypted successfully using \(algorithm). Saved to \(encryptedFilePath).")
+            } else {
+                showAlert(message: "Encryption failed.")
+            }
+        } catch {
+            showAlert(message: "File encryption failed: \(error.localizedDescription)")
+        }
+    }
+    
+    @objc func decryptFile() {
+        guard let filePath = filePathTextField.text, !filePath.isEmpty,
+              let password = passwordTextField.text, !password.isEmpty else {
+            showAlert(message: "Please ensure all fields are filled correctly.")
+            return
+        }
+        
+        let algorithm = algorithmSegmentedControl.titleForSegment(at: algorithmSegmentedControl.selectedSegmentIndex) ?? "AES"
+        
+        do {
+            let encryptedData = try Data(contentsOf: URL(fileURLWithPath: filePath))
+            let key = Data(password.utf8).sha256()
+            
+            var decryptedData: Data?
+            
+            switch algorithm {
+            case "AES":
+                decryptedData = aesDecrypt(data: encryptedData, key: key)
+            case "DES":
+                decryptedData = desDecrypt(data: encryptedData, key: key)
+            case "Blowfish":
+                decryptedData = blowfishDecrypt(data: encryptedData, key: key)
+            default:
+                showAlert(message: "Unsupported algorithm selected.")
+                return
+            }
+            
+            if let decryptedData = decryptedData {
+                let decryptedFilePath = filePath.replacingOccurrences(of: ".enc", with: "")
+                try decryptedData.write(to: URL(fileURLWithPath: decryptedFilePath))
+                showAlert(message: "File decrypted successfully using \(algorithm). Saved to \(decryptedFilePath).")
+            } else {
+                showAlert(message: "Decryption failed.")
+            }
+        } catch {
+            showAlert(message: "File decryption failed: \(error.localizedDescription)")
+        }
+    }
+    
+    @objc func closeApp() {
+        exit(0) // Exits the application
+    }
+    
+    func showAlert(message: String) {
+        let alert = UIAlertController(title: nil, message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
+        present(alert, animated: true, completion: nil)
+    }
+    
+    // AES Encryption and Decryption Functions
+    func aesEncrypt(data: Data, key: Data) -> Data? {
+        return crypt(data: data, key: key, algorithm: CCAlgorithm(kCCAlgorithmAES))
+    }
+    
+    func aesDecrypt(data: Data, key: Data) -> Data? {
+        return crypt(data: data, key: key, algorithm: CCAlgorithm(kCCAlgorithmAES), operation: CCOperation(kCCDecrypt))
+    }
+    
+    // DES Encryption and Decryption Functions
+    func desEncrypt(data: Data, key: Data) -> Data? {
+        return crypt(data: data, key: key, algorithm: CCAlgorithm(kCCAlgorithmDES))
+    }
+    
+    func desDecrypt(data: Data, key: Data) -> Data? {
+        return crypt(data: data, key: key, algorithm: CCAlgorithm(kCCAlgorithmDES), operation: CCOperation(kCCDecrypt))
+    }
+    
+    // Blowfish Encryption and Decryption Functions
+    func blowfishEncrypt(data: Data, key: Data) -> Data? {
+        return crypt(data: data, key: key, algorithm: CCAlgorithm(kCCAlgorithmBlowfish))
+    }
+    
+    func blowfishDecrypt(data: Data, key: Data) -> Data? {
+        return crypt(data: data, key: key, algorithm: CCAlgorithm(kCCAlgorithmBlowfish), operation: CCOperation(kCCDecrypt))
+    }
+    
+    // Common Crypt Function
+    func crypt(data: Data, key: Data, algorithm: CCAlgorithm, operation: CCOperation = CCOperation(kCCEncrypt)) -> Data? {
+        var keyLength = 0
+        switch algorithm {
+        case CCAlgorithm(kCCAlgorithmAES):
+            keyLength = kCCKeySizeAES256
+        case CCAlgorithm(kCCAlgorithmDES):
+            keyLength = kCCKeySizeDES
+        case CCAlgorithm(kCCAlgorithmBlowfish):
+            keyLength = kCCKeySizeMaxBlowfish
+        default:
+            return nil
+        }
+        
+        var numBytesEncrypted: size_t = 0
+        let dataOut = UnsafeMutableRawPointer.allocate(byteCount: data.count + kCCBlockSizeAES128, alignment: 1)
+        defer { dataOut.deallocate() }
+        
+        let cryptStatus = data.withUnsafeBytes { dataBytes in
+            key.withUnsafeBytes { keyBytes in
+                CCCrypt(
+                    operation,
+                    algorithm,
+                    CCOptions(kCCOptionPKCS7Padding),
+                    keyBytes.baseAddress, keyLength,
+                    nil,
+                    dataBytes.baseAddress, data.count,
+                    dataOut, data.count + kCCBlockSizeAES128,
+                    &numBytesEncrypted
+                )
+            }
+        }
+        
+        if cryptStatus == kCCSuccess {
+            return Data(bytes: dataOut, count: numBytesEncrypted)
+        } else {
+            return nil
+        }
     }
 }
 
-extension MainViewController: UIDocumentPickerDelegate {
-    func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
-        if let selectedFileURL = urls.first {
-            filePathLabel.text = selectedFileURL.path
+extension Data {
+    func sha256() -> Data {
+        var hash = [UInt8](repeating: 0, count: Int(CC_SHA256_DIGEST_LENGTH))
+        self.withUnsafeBytes {
+            _ = CC_SHA256($0.baseAddress, CC_LONG(self.count), &hash)
         }
+        return Data(hash)
     }
 }
